@@ -8,33 +8,30 @@ app = FastAPI()
 
 @app.post("/remove")
 async def remove_background(file: UploadFile = File(...)):
-    # Step 1: Read uploaded image
     contents = await file.read()
 
-    # Step 2: Remove background
+    # Remove background
     bg_removed = remove(contents)
 
-    # Step 3: Load image and prepare for enhancement
+    # Open image
     image = Image.open(BytesIO(bg_removed)).convert("RGBA")
 
-    # Convert to RGB for compatibility with Pillow filters
+    # Convert to RGB so Pillow filters work
     image = image.convert("RGB")
 
-    # Step 4: Auto-enhance image
+    # Enhance lighting
     image = ImageOps.autocontrast(image)
 
-    # Optional: Resize to reasonable dimensions
-    image.thumbnail((1000, 1000), Image.ANTIALIAS)
+    # Resize using correct resampling method
+    image.thumbnail((1000, 1000), Image.Resampling.LANCZOS)
 
-    # Step 5: Save output to buffer
+    # Save to buffer
     output_buffer = BytesIO()
     image.save(output_buffer, format="PNG")
     output_buffer.seek(0)
 
     return StreamingResponse(output_buffer, media_type="image/png")
 
-
-# 🔁 Enable local development + Railway compatibility
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000)
