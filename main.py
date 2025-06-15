@@ -10,27 +10,29 @@ app = FastAPI()
 async def remove_background(file: UploadFile = File(...)):
     contents = await file.read()
 
-    # Remove background
+    # Step 1: Remove background using Rembg
     bg_removed = remove(contents)
 
-    # Open image
+    # Step 2: Open the transparent PNG result
     image = Image.open(BytesIO(bg_removed)).convert("RGBA")
 
-    # Convert to RGB so Pillow filters work
-    image = image.convert("RGB")
+    # Step 3: Add a white background behind the transparent image
+    bg = Image.new("RGB", image.size, (255, 255, 255))  # white background
+    bg.paste(image, mask=image.split()[3])  # use alpha channel as mask
 
-    # Enhance lighting
-    image = ImageOps.autocontrast(image)
+    # Step 4: Optional brightness enhancement
+    bg = ImageOps.autocontrast(bg)
 
-    # Resize using correct resampling method
-    image.thumbnail((1000, 1000), Image.Resampling.LANCZOS)
+    # Step 5: Resize for consistency
+    bg.thumbnail((1000, 1000), Image.Resampling.LANCZOS)
 
-    # Save to buffer
+    # Step 6: Output to stream
     output_buffer = BytesIO()
-    image.save(output_buffer, format="PNG")
+    bg.save(output_buffer, format="PNG")
     output_buffer.seek(0)
 
     return StreamingResponse(output_buffer, media_type="image/png")
+
 
 if __name__ == "__main__":
     import uvicorn
